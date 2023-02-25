@@ -1,48 +1,69 @@
 trigger: 'none' # will disable CI builds entirely
+stages:
+- stage: Buildstage
+  jobs:
+  - job: buildjob
+    pool:
+      vmImage: 'windows-2019'
+        
+    variables:
+      BuildConfiguration: release
+      
+    steps:
 
-pool:
-  vmImage: 'windows-2019'
+    - task: UseDotNet@2
+      displayName: Install .NET 6 sdk
+      inputs:
+        packageType: sdk
+        version: 6.0.x
+        installationPath: $(Agent.ToolsDirectory)/dotnet
+
+    - task: DotNetCoreCLI@2
+      displayName: Restore Nuget Packages
+      inputs:
+        command: restore
+        projects: '**/WebApp.csproj'
+
+    - task: DotNetCoreCLI@2
+      displayName: Build Web App
+      inputs:
+        projects: '**/WebApp.csproj'
+        arguments: '--configuration $(BuildConfiguration)'
+
+    - task: DotNetCoreCLI@2
+      displayName: Run Unit Tests
+      inputs:
+        command: test
+        projects: '**/*UnitTest*.csproj'
+        arguments: '--configuration $(BuildConfiguration)'
+
+    - task: DotNetCoreCLI@2
+      displayName: Create Web App Package (.zip)
+      inputs:
+        command: publish
+        publishWebProjects: True
+        arguments: '--configuration $(BuildConfiguration) --output $(build.artifactstagingdirectory)'
+        zipAfterPublish: True
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Artifact (WebApp.zip)'
+      inputs:
+        PathtoPublish: '$(build.artifactstagingdirectory)'
+- stage: Deploystage
+  jobs:
+  - job: Deployjob
+    steps:
+    - task: DownloadBuildArtifacts@1
+      inputs:
+        buildType: 'current'
+        downloadType: 'single'
+        downloadPath: '$(System.ArtifactsDirectory)'
+    - task: AzureRmWebAppDeployment@4
+      inputs:
+        ConnectionType: 'AzureRM'
+        azureSubscription: 'Free Trial(2)(22dc0a0c-2180-42bc-9c23-32e167c95f03)'
+        appType: 'webApp'
+        WebAppName: 'yamlwebapp1'
+        packageForLinux: '$(System.DefaultWorkingDirectory)/**/*.zip'
     
-variables:
-  BuildConfiguration: release
-  
-steps:
-
-- task: UseDotNet@2
-  displayName: Install .NET 6 sdk
-  inputs:
-    packageType: sdk
-    version: 6.0.x
-    installationPath: $(Agent.ToolsDirectory)/dotnet
-
-- task: DotNetCoreCLI@2
-  displayName: Restore Nuget Packages
-  inputs:
-    command: restore
-    projects: '**/WebApp.csproj'
-
-- task: DotNetCoreCLI@2
-  displayName: Build Web App
-  inputs:
-    projects: '**/WebApp.csproj'
-    arguments: '--configuration $(BuildConfiguration)'
-
-- task: DotNetCoreCLI@2
-  displayName: Run Unit Tests
-  inputs:
-    command: test
-    projects: '**/*UnitTest*.csproj'
-    arguments: '--configuration $(BuildConfiguration)'
-
-- task: DotNetCoreCLI@2
-  displayName: Create Web App Package (.zip)
-  inputs:
-    command: publish
-    publishWebProjects: True
-    arguments: '--configuration $(BuildConfiguration) --output $(build.artifactstagingdirectory)'
-    zipAfterPublish: True
-
-- task: PublishBuildArtifacts@1
-  displayName: 'Publish Artifact (WebApp.zip)'
-  inputs:
-    PathtoPublish: '$(build.artifactstagingdirectory)'
+    
