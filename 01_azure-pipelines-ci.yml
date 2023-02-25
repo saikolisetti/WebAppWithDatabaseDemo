@@ -58,12 +58,12 @@ stages:
         buildType: 'current'
         downloadType: 'single'
         downloadPath: '$(System.ArtifactsDirectory)'
-    - task: AzureRmWebAppDeployment@4
+    - task: AzureWebApp@1
       inputs:
-        ConnectionType: 'AzureRM'
-        azureSubscription: 'Free Trial(2)(22dc0a0c-2180-42bc-9c23-32e167c95f03)'
+        azureSubscription: 'Free Trial(1)(22dc0a0c-2180-42bc-9c23-32e167c95f03)'
         appType: 'webApp'
-        WebAppName: 'yamlwebapp1'
-        packageForLinux: '$(System.DefaultWorkingDirectory)/**/*.zip'
+        appName: 'yamlwebapp1'
+        package: '$(System.DefaultWorkingDirectory)/**/*.zip'
+        deploymentMethod: 'auto'
     
     
